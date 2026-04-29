@@ -17,6 +17,29 @@ void led_set(uint8_t r, uint8_t g, uint8_t b) {
     pixel.show();
 }
 
+// ── Calibration test index (set by solver) ───────────────
+static uint8_t cal_test_index = 0;
+
+void led_set_cal_test(uint8_t idx) { cal_test_index = idx; }
+
+// ── Flash pattern to show which walls are detected ───────
+// Called once — blocks briefly to blink the LED.
+//   Left wall  → 1 blue flash
+//   Front wall → 1 green flash
+//   Right wall → 1 red flash
+// Absent walls get a dim short blink instead.
+void led_flash_walls(bool wl, bool wf, bool wr) {
+    // Left
+    led_set(0, 0, wl ? 200 : 20); delay(300);
+    led_set(0, 0, 0);              delay(150);
+    // Front
+    led_set(0, wf ? 200 : 20, 0); delay(300);
+    led_set(0, 0, 0);              delay(150);
+    // Right
+    led_set(wr ? 200 : 20, 0, 0); delay(300);
+    led_set(0, 0, 0);              delay(150);
+}
+
 // ── Animated LED state indicator ─────────────────────────
 // Called from loop() — uses millis() for non-blocking animation.
 void led_update(RobotState state) {
@@ -30,9 +53,15 @@ void led_update(RobotState state) {
             break;
         }
         case STATE_CALIBRATE: {
-            // Slow magenta pulse
-            uint8_t brightness = (uint8_t)((sin(now / 800.0f * PI) + 1.0f) * 80);
-            led_set(brightness, 0, brightness);
+            // Pulse the colour that matches the selected test
+            uint8_t b = (uint8_t)((sin(now / 600.0f * PI) + 1.0f) * 90);
+            switch (cal_test_index) {
+                case 0: led_set(0,   0,   b);  break;  // Blue   — Forward 1 cell
+                case 1: led_set(b,   b/2, 0);  break;  // Yellow — 360° rotation
+                case 2: led_set(0,   b,   0);  break;  // Green  — ToF wall check
+                case 3: led_set(b,   0,   0);  break;  // Red    — Square-up test
+                default: led_set(b,  0,   b);  break;  // Magenta fallback
+            }
             break;
         }
         case STATE_EXPLORE:
@@ -75,3 +104,4 @@ void led_update(RobotState state) {
         }
     }
 }
+

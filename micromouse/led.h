@@ -19,4 +19,8 @@ void led_init();
 void led_set(uint8_t r, uint8_t g, uint8_t b);
 void led_update(RobotState state);   // call every loop() — handles animations
 
+// ── Calibration helpers ──────────────────────────────────
+void led_set_cal_test(uint8_t idx);                    // set which test is selected (0–3)
+void led_flash_walls(bool wl, bool wf, bool wr);      // flash L/F/R wall presence
+
 #endif // LED_H

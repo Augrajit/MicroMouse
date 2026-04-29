@@ -37,6 +37,12 @@
 #define PIN_BTN_START       0    // Boot button — active LOW, INPUT_PULLUP
 #define PIN_LED             48   // Onboard NeoPixel
 
+// ── Button Timing (ms) ──────────────────────────────────
+#define BTN_DEBOUNCE_MS     50   // Ignore bounces shorter than this
+#define BTN_LONG_PRESS_MS   2000 // Hold > 2s = long-press
+#define BTN_DOUBLE_GAP_MS   400  // Two presses within 400ms = double-press
+#define CAL_NUM_TESTS       4    // Number of calibration test slots
+
 // ── VL53L0X I2C Addresses ───────────────────────────────
 #define TOF_ADDR_LEFT       0x30
 #define TOF_ADDR_FRONT      0x31

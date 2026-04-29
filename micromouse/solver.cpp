@@ -100,83 +100,170 @@ static void _navigate_to_direction(uint8_t target_dir) {
 }
 
 // ══════════════════════════════════════════════════════════
-//  CALIBRATE sub-state (serial-driven)
+//  Button reader — detects short-press, double-press, long-press
 // ══════════════════════════════════════════════════════════
+//
+//  Returns:
+//    0 = nothing
+//    1 = short single press
+//    2 = double press
+//    3 = long press (held > BTN_LONG_PRESS_MS)
+//
+static uint8_t _read_button() {
+    static bool     was_pressed   = false;
+    static uint32_t press_start   = 0;
+    static uint32_t last_release  = 0;
+    static uint8_t  pending_click = 0;
 
-static void _calibrate_menu() {
-    Serial.println(F("\n╔══════════════════════════════════╗"));
-    Serial.println(F("║      CALIBRATION MODE            ║"));
-    Serial.println(F("╠══════════════════════════════════╣"));
-    Serial.println(F("║  1 — Forward 1 cell (180mm)      ║"));
-    Serial.println(F("║  2 — 360° rotation (4×right)     ║"));
-    Serial.println(F("║  3 — Print encoder/speed info    ║"));
-    Serial.println(F("║  4 — Print ToF readings          ║"));
-    Serial.println(F("║  5 — Test square-up              ║"));
-    Serial.println(F("║  Q — Quit calibration → IDLE     ║"));
-    Serial.println(F("╚══════════════════════════════════╝"));
+    bool pressed = (digitalRead(PIN_BTN_START) == LOW);
+    uint32_t now = millis();
+
+    // ── Falling edge (button just pressed) ───────────────
+    if (pressed && !was_pressed) {
+        press_start = now;
+        was_pressed = true;
+        return 0;
+    }
+
+    // ── Held down — detect long-press ────────────────────
+    if (pressed && was_pressed) {
+        if ((now - press_start) >= BTN_LONG_PRESS_MS) {
+            was_pressed = false;            // consume
+            pending_click = 0;
+            // Wait for release before returning
+            while (digitalRead(PIN_BTN_START) == LOW) delay(10);
+            return 3;  // LONG PRESS
+        }
+        return 0;
+    }
+
+    // ── Rising edge (button just released) ───────────────
+    if (!pressed && was_pressed) {
+        was_pressed = false;
+        uint32_t held = now - press_start;
+        if (held < BTN_DEBOUNCE_MS) return 0;      // bounce
+
+        if (held < BTN_LONG_PRESS_MS) {
+            // Short press — could be first of a double-press
+            if (pending_click == 1 && (now - last_release) < BTN_DOUBLE_GAP_MS) {
+                pending_click = 0;
+                return 2;  // DOUBLE PRESS
+            }
+            pending_click = 1;
+            last_release = now;
+        }
+        return 0;
+    }
+
+    // ── Idle — check if pending single-click has timed out ─
+    if (pending_click == 1 && (now - last_release) >= BTN_DOUBLE_GAP_MS) {
+        pending_click = 0;
+        return 1;  // SINGLE SHORT PRESS
+    }
+
+    return 0;
 }
 
-static bool _calibrate_step() {
-    if (!Serial.available()) return false;
+// ══════════════════════════════════════════════════════════
+//  CALIBRATE sub-state (button-driven)
+// ══════════════════════════════════════════════════════════
+//
+//  Controls (single BOOT button):
+//    Short press  → cycle to next test
+//    Double press → execute current test
+//    Long press   → exit calibration → IDLE
+//
+//  Test    LED colour    Action
+//  ──────────────────────────────────────────────
+//  0       Blue          Forward 1 cell (180 mm)
+//  1       Yellow        360° rotation (4 × right)
+//  2       Green         ToF wall check (LED flash)
+//  3       Red           Square-up test
+//
+//  Serial 'C'/'c' from IDLE still enters calibration
+//  (for when you DO have a laptop connected).
 
-    char c = Serial.read();
+static uint8_t cal_idx = 0;   // currently selected test (0–3)
 
-    switch (c) {
-        case '1':
-            Serial.println(F("[CAL] Forward 1 cell..."));
+static void _calibrate_enter() {
+    cal_idx = 0;
+    led_set_cal_test(cal_idx);
+    Serial.println(F("\n[CAL] ── Button Calibration Mode ──"));
+    Serial.println(F("[CAL] Short press  = next test"));
+    Serial.println(F("[CAL] Double press = run test"));
+    Serial.println(F("[CAL] Long press   = exit"));
+    Serial.println(F("[CAL] Test 0: Forward 1 cell (BLUE)"));
+}
+
+static void _calibrate_run_test() {
+    // Brief white flash to confirm execution
+    led_set(255, 255, 255);
+    delay(150);
+
+    switch (cal_idx) {
+        case 0: {
+            Serial.println(F("[CAL] ▶ Forward 1 cell..."));
             motion_forward(1);
-            Serial.print(F("[CAL] Encoder L="));
+            Serial.print(F("[CAL]   Encoder L="));
             Serial.print(encoder_get_left());
             Serial.print(F("  R="));
             Serial.println(encoder_get_right());
             break;
-
-        case '2':
-            Serial.println(F("[CAL] 360° rotation..."));
+        }
+        case 1: {
+            Serial.println(F("[CAL] ▶ 360° rotation..."));
             motion_turn_right();
             motion_turn_right();
             motion_turn_right();
             motion_turn_right();
-            Serial.println(F("[CAL] 360° complete. Check heading."));
+            Serial.println(F("[CAL]   360° complete. Check heading."));
             break;
-
-        case '3':
-            Serial.println(F("[CAL] ── Constants ──"));
-            Serial.print(F("  GEAR_RATIO          = ")); Serial.println(GEAR_RATIO);
-            Serial.print(F("  WHEEL_DIAMETER_MM   = ")); Serial.println(WHEEL_DIAMETER_MM);
-            Serial.print(F("  WHEEL_BASE_MM       = ")); Serial.println(WHEEL_BASE_MM);
-            Serial.print(F("  COUNTS_PER_WHEEL_REV= ")); Serial.println(COUNTS_PER_WHEEL_REV);
-            Serial.print(F("  MM_PER_COUNT        = ")); Serial.println(MM_PER_COUNT, 5);
-            Serial.print(F("  Counts/cell (180mm) = ")); Serial.println(CELL_SIZE_MM / MM_PER_COUNT, 1);
-            Serial.print(F("  Counts/90° turn     = ")); Serial.println((PI * WHEEL_BASE_MM / 4.0f) / MM_PER_COUNT, 1);
-            break;
-
-        case '4':
-            Serial.println(F("[CAL] ── ToF Readings ──"));
+        }
+        case 2: {
+            Serial.println(F("[CAL] ▶ ToF wall check..."));
             tof_update();
-            Serial.print(F("  Left  = ")); Serial.print(tof_get_left());  Serial.println(F(" mm"));
-            Serial.print(F("  Front = ")); Serial.print(tof_get_front()); Serial.println(F(" mm"));
-            Serial.print(F("  Right = ")); Serial.print(tof_get_right()); Serial.println(F(" mm"));
-            Serial.print(F("  Wall L=")); Serial.print(tof_wall_left());
-            Serial.print(F("  F=")); Serial.print(tof_wall_front());
-            Serial.print(F("  R=")); Serial.println(tof_wall_right());
-            break;
+            bool wl = tof_wall_left();
+            bool wf = tof_wall_front();
+            bool wr = tof_wall_right();
 
-        case '5':
-            Serial.println(F("[CAL] Square-up test..."));
+            // Flash LED: bright = wall present, dim = absent
+            //   Blue  = Left
+            //   Green = Front
+            //   Red   = Right
+            led_flash_walls(wl, wf, wr);
+            // Repeat so user can see clearly
+            delay(300);
+            led_flash_walls(wl, wf, wr);
+
+            Serial.print(F("[CAL]   L="));
+            Serial.print(tof_get_left());
+            Serial.print(F("mm("));   Serial.print(wl ? "WALL" : "open");
+            Serial.print(F(")  F=")); Serial.print(tof_get_front());
+            Serial.print(F("mm("));   Serial.print(wf ? "WALL" : "open");
+            Serial.print(F(")  R=")); Serial.print(tof_get_right());
+            Serial.print(F("mm("));   Serial.print(wr ? "WALL" : "open");
+            Serial.println(F(")"));
+            break;
+        }
+        case 3: {
+            Serial.println(F("[CAL] ▶ Square-up test..."));
             motion_square_up();
             break;
-
-        case 'Q': case 'q':
-            Serial.println(F("[CAL] Exiting calibration → IDLE"));
-            state = STATE_IDLE;
-            return true;
-
-        default:
-            _calibrate_menu();
-            break;
+        }
     }
-    return false;
+
+    // Restore test-colour pulsing
+    led_set_cal_test(cal_idx);
+}
+
+static const char* _cal_test_name(uint8_t idx) {
+    switch (idx) {
+        case 0: return "Forward 1 cell (BLUE)";
+        case 1: return "360 rotation (YELLOW)";
+        case 2: return "ToF wall check (GREEN)";
+        case 3: return "Square-up (RED)";
+        default: return "???";
+    }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -191,7 +278,10 @@ void solver_init() {
     maze_init();
     motion_init();
 
-    Serial.println(F("[SOL] Solver initialised. Waiting for button or 'C' for calibration."));
+    Serial.println(F("[SOL] Solver initialised."));
+    Serial.println(F("[SOL]   Short press  = START EXPLORE"));
+    Serial.println(F("[SOL]   Long press   = CALIBRATION MODE"));
+    Serial.println(F("[SOL]   Serial 'C'   = CALIBRATION MODE"));
 }
 
 // ══════════════════════════════════════════════════════════
@@ -202,40 +292,64 @@ void solver_step() {
 
     // ── IDLE ─────────────────────────────────────────────
     case STATE_IDLE: {
-        // Check for serial 'C' → calibration
+        // Check for serial 'C' → calibration (backward compat)
         if (Serial.available()) {
             char c = Serial.read();
             if (c == 'C' || c == 'c') {
                 state = STATE_CALIBRATE;
-                _calibrate_menu();
+                _calibrate_enter();
                 return;
             }
         }
 
-        // Wait for button press
-        if (digitalRead(PIN_BTN_START) == LOW) {
-            delay(50);   // debounce
-            if (digitalRead(PIN_BTN_START) == LOW) {
-                // Wait for release
-                while (digitalRead(PIN_BTN_START) == LOW) delay(10);
+        // Button: short = explore, long = calibrate
+        uint8_t btn = _read_button();
+        if (btn == 1 || btn == 2) {
+            // Any short/double press → start exploring
+            Serial.println(F("[SOL] Button pressed — starting EXPLORE"));
+            state = STATE_EXPLORE;
 
-                Serial.println(F("[SOL] Button pressed — starting EXPLORE"));
-                state = STATE_EXPLORE;
-
-                // Mark start cell: we know we came in from outside, so
-                // the south wall of cell (0,0) is the outer boundary (already set).
-                // Read initial walls at start cell.
-                tof_update();
-                _read_and_set_walls();
-            }
+            tof_update();
+            _read_and_set_walls();
+        } else if (btn == 3) {
+            // Long press → calibration
+            state = STATE_CALIBRATE;
+            _calibrate_enter();
         }
         break;
     }
 
     // ── CALIBRATE ────────────────────────────────────────
-    case STATE_CALIBRATE:
-        _calibrate_step();
+    case STATE_CALIBRATE: {
+        // Also allow serial commands as fallback
+        if (Serial.available()) {
+            char c = Serial.read();
+            if (c == 'Q' || c == 'q') {
+                Serial.println(F("[CAL] Exit → IDLE"));
+                state = STATE_IDLE;
+                return;
+            }
+        }
+
+        uint8_t btn = _read_button();
+        if (btn == 1) {
+            // Short press → next test
+            cal_idx = (cal_idx + 1) % CAL_NUM_TESTS;
+            led_set_cal_test(cal_idx);
+            Serial.print(F("[CAL] Test "));
+            Serial.print(cal_idx);
+            Serial.print(F(": "));
+            Serial.println(_cal_test_name(cal_idx));
+        } else if (btn == 2) {
+            // Double press → run test
+            _calibrate_run_test();
+        } else if (btn == 3) {
+            // Long press → exit
+            Serial.println(F("[CAL] Exit → IDLE"));
+            state = STATE_IDLE;
+        }
         break;
+    }
 
     // ── EXPLORE ──────────────────────────────────────────
     case STATE_EXPLORE: {
