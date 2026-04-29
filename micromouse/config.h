@@ -19,8 +19,8 @@
 #define PIN_MOTOR_STBY      7    // STBY  — HIGH = active, LOW = coast/stop
 
 // ── Quadrature Encoders ──────────────────────────────────
-#define PIN_ENC_L_A         8    // Left encoder channel A
-#define PIN_ENC_L_B         9    // Left encoder channel B
+#define PIN_ENC_L_A         9    // Left encoder channel A  (swapped to fix sign)
+#define PIN_ENC_L_B         8    // Left encoder channel B  (swapped to fix sign)
 #define PIN_ENC_R_A         10   // Right encoder channel A
 #define PIN_ENC_R_B         11   // Right encoder channel B
 
