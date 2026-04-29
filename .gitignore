@@ -1,0 +1,19 @@
+# Arduino / PlatformIO build artifacts
+.pio/
+.vscode/
+build/
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editor files
+*.swp
+*.swo
+*~
