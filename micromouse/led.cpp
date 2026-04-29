@@ -60,6 +60,7 @@ void led_update(RobotState state) {
                 case 1: led_set(b,   b/2, 0);  break;  // Yellow — 360° rotation
                 case 2: led_set(0,   b,   0);  break;  // Green  — ToF wall check
                 case 3: led_set(b,   0,   0);  break;  // Red    — Square-up test
+                case 4: led_set(0,   b,   b);  break;  // Cyan   — Motor self-test
                 default: led_set(b,  0,   b);  break;  // Magenta fallback
             }
             break;
