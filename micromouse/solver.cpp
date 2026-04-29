@@ -250,47 +250,6 @@ static void _calibrate_run_test() {
             motion_square_up();
             break;
         }
-        case 4: {
-            Serial.println(F("[CAL] ▶ Motor self-test..."));
-            Serial.println(F("[CAL]   Phase 1: LEFT motor only (1s)..."));
-            led_set(0, 0, 200);   // blue = left
-            encoder_reset();
-            motor_set(150, 0);    // left only
-            delay(1000);
-            motor_brake();
-            int64_t el = encoder_get_left();
-            int64_t er = encoder_get_right();
-            Serial.print(F("[CAL]   L_enc=")); Serial.print((long)el);
-            Serial.print(F("  R_enc=")); Serial.println((long)er);
-            if (abs(el) < 5) Serial.println(F("[CAL]   ⚠ LEFT MOTOR/ENCODER NOT WORKING!"));
-            delay(500);
-
-            Serial.println(F("[CAL]   Phase 2: RIGHT motor only (1s)..."));
-            led_set(200, 0, 0);   // red = right
-            encoder_reset();
-            motor_set(0, 150);    // right only
-            delay(1000);
-            motor_brake();
-            el = encoder_get_left();
-            er = encoder_get_right();
-            Serial.print(F("[CAL]   L_enc=")); Serial.print((long)el);
-            Serial.print(F("  R_enc=")); Serial.println((long)er);
-            if (abs(er) < 5) Serial.println(F("[CAL]   ⚠ RIGHT MOTOR/ENCODER NOT WORKING!"));
-            delay(500);
-
-            Serial.println(F("[CAL]   Phase 3: BOTH motors (1s)..."));
-            led_set(0, 200, 0);   // green = both
-            encoder_reset();
-            motor_set(150, 150);  // both forward
-            delay(1000);
-            motor_brake();
-            el = encoder_get_left();
-            er = encoder_get_right();
-            Serial.print(F("[CAL]   L_enc=")); Serial.print((long)el);
-            Serial.print(F("  R_enc=")); Serial.println((long)er);
-            Serial.println(F("[CAL]   Motor self-test complete."));
-            break;
-        }
     }
 
     // Restore test-colour pulsing
@@ -303,7 +262,6 @@ static const char* _cal_test_name(uint8_t idx) {
         case 1: return "360 rotation (YELLOW)";
         case 2: return "ToF wall check (GREEN)";
         case 3: return "Square-up (RED)";
-        case 4: return "Motor self-test (CYAN)";
         default: return "???";
     }
 }
