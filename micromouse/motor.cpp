@@ -54,6 +54,10 @@ static inline void _pwm_write_right(uint8_t duty) {
 }
 
 void motor_set(int pwm_left, int pwm_right) {
+    // Motors are physically wired in reverse — negate to correct
+    pwm_left  = -pwm_left;
+    pwm_right = -pwm_right;
+
     // ── Left motor ──
     if (pwm_left > 0) {
         digitalWrite(PIN_MOTOR_L_IN1, HIGH);

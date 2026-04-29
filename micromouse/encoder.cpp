@@ -22,11 +22,11 @@ void encoder_init() {
 }
 
 int64_t encoder_get_left() {
-    return encLeft.getCount();
+    return -encLeft.getCount();   // negated to match motor direction fix
 }
 
 int64_t encoder_get_right() {
-    return encRight.getCount();
+    return -encRight.getCount();  // negated to match motor direction fix
 }
 
 void encoder_reset() {

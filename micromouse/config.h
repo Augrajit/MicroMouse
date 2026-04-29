@@ -11,18 +11,18 @@
 
 // ── Motor Driver (TB6612FNG) ─────────────────────────────
 #define PIN_MOTOR_L_PWM     1    // PWMA  — Left motor speed  (LEDC)
-#define PIN_MOTOR_L_IN1     15   // AIN1  — Left motor direction  (swapped to fix direction)
-#define PIN_MOTOR_L_IN2     2    // AIN2  — Left motor direction  (swapped to fix direction)
+#define PIN_MOTOR_L_IN1     2    // AIN1  — Left motor direction
+#define PIN_MOTOR_L_IN2     15   // AIN2  — Left motor direction  *** GPIO 15 (safe boot) ***
 #define PIN_MOTOR_R_PWM     4    // PWMB  — Right motor speed (LEDC)
-#define PIN_MOTOR_R_IN1     6    // BIN1  — Right motor direction  (swapped to fix direction)
-#define PIN_MOTOR_R_IN2     5    // BIN2  — Right motor direction  (swapped to fix direction)
+#define PIN_MOTOR_R_IN1     5    // BIN1  — Right motor direction
+#define PIN_MOTOR_R_IN2     6    // BIN2  — Right motor direction
 #define PIN_MOTOR_STBY      7    // STBY  — HIGH = active, LOW = coast/stop
 
 // ── Quadrature Encoders ──────────────────────────────────
-#define PIN_ENC_L_A         8    // Left encoder channel A
-#define PIN_ENC_L_B         9    // Left encoder channel B
-#define PIN_ENC_R_A         11   // Right encoder channel A  (swapped to fix sign)
-#define PIN_ENC_R_B         10   // Right encoder channel B  (swapped to fix sign)
+#define PIN_ENC_L_A         9    // Left encoder channel A  (swapped to fix sign)
+#define PIN_ENC_L_B         8    // Left encoder channel B  (swapped to fix sign)
+#define PIN_ENC_R_A         10   // Right encoder channel A
+#define PIN_ENC_R_B         11   // Right encoder channel B
 
 // ── VL53L0X XSHUT (active LOW) ──────────────────────────
 #define PIN_TOF_XSHUT_L     12   // Left sensor shutdown
