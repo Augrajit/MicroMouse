@@ -62,7 +62,7 @@
 #define GEAR_RATIO          200.0f      // Motor gear ratio — CONFIRMED
 
 // ── Encoder ──────────────────────────────────────────────
-#define ENCODER_PPR         3           // Pulses per revolution (motor shaft)
+#define ENCODER_PPR         7           // Pulses per revolution (motor shaft)
 #define ENCODER_QUADRATURE  4           // 4x quadrature decoding
 // Derived — do not change these
 #define COUNTS_PER_MOTOR_REV   (ENCODER_PPR * ENCODER_QUADRATURE)             // = 12
